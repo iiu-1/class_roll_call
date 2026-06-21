@@ -27,6 +27,9 @@ public class RollCallResult {
     /** 是否已触发高分补抽模式 */
     private boolean highScoreMode;
 
+    /** 本轮已点名全部学生，自动重选 */
+    private boolean fullRoundExhausted;
+
     // ====== getters & setters ======
 
     public Student getStudent() { return student; }
@@ -46,4 +49,7 @@ public class RollCallResult {
 
     public boolean isHighScoreMode() { return highScoreMode; }
     public void setHighScoreMode(boolean highScoreMode) { this.highScoreMode = highScoreMode; }
+
+    public boolean isFullRoundExhausted() { return fullRoundExhausted; }
+    public void setFullRoundExhausted(boolean fullRoundExhausted) { this.fullRoundExhausted = fullRoundExhausted; }
 }

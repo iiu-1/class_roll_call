@@ -9,7 +9,6 @@ import com.rollcall.entity.Student;
 import com.rollcall.mapper.StudentMapper;
 import com.rollcall.service.StudentService;
 import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -17,8 +16,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 学生 Service 实现
@@ -79,7 +78,6 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
     }
 
     @Override
-    @Transactional
     public ImportResult importFromFile(MultipartFile file) {
         ImportResult result = new ImportResult();
         String filename = file.getOriginalFilename();
@@ -89,19 +87,39 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         }
 
         List<Student> students;
-        if (filename.endsWith(".csv")) {
+        String lowerName = filename.toLowerCase();
+        if (lowerName.endsWith(".csv")) {
             students = parseCsv(file, result);
-        } else if (filename.endsWith(".xlsx") || filename.endsWith(".xls")) {
+        } else if (lowerName.endsWith(".xlsx") || lowerName.endsWith(".xls")) {
             students = parseExcel(file, result);
         } else {
             result.addError("不支持的文件格式，请上传 .xlsx、.xls 或 .csv 文件");
             return result;
         }
 
-        result.setTotal(students.size() + result.getFail());
+        // 预过滤：去除数据库中已存在及文件内重复的学号
+        List<Student> newStudents = students;
+        Set<String> seenInFile = new HashSet<>();
         if (!students.isEmpty()) {
-            this.saveBatch(students);
-            result.setSuccess(students.size());
+            Set<String> existingNos = this.list().stream()
+                    .map(Student::getStudentNo)
+                    .collect(Collectors.toSet());
+            newStudents = new ArrayList<>();
+            for (Student s : students) {
+                if (existingNos.contains(s.getStudentNo())) {
+                    result.addError("学号 " + s.getStudentNo() + " 已存在数据库中，已跳过");
+                } else if (!seenInFile.add(s.getStudentNo())) {
+                    result.addError("学号 " + s.getStudentNo() + " 在文件中重复，已跳过");
+                } else {
+                    newStudents.add(s);
+                }
+            }
+        }
+
+        result.setTotal(newStudents.size() + result.getFail());
+        if (!newStudents.isEmpty()) {
+            this.saveBatch(newStudents);
+            result.setSuccess(newStudents.size());
         }
         return result;
     }
@@ -117,7 +135,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
                 result.addError("CSV 文件为空");
                 return students;
             }
-            String[] headers = headerLine.split(",");
+            String[] headers = splitCsvLine(headerLine);
             int colSno = findColumn(headers, "学号");
             int colName = findColumn(headers, "姓名");
             if (colSno < 0 || colName < 0) {
@@ -129,7 +147,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
             int rowNum = 1;
             while ((line = reader.readLine()) != null) {
                 rowNum++;
-                String[] cells = line.split(",");
+                String[] cells = splitCsvLine(line);
                 try {
                     String sno = cells[colSno].trim();
                     String name = cells[colName].trim();
@@ -223,6 +241,13 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         if (cell == null) return "";
         cell.setCellType(CellType.STRING);
         return cell.getStringCellValue().trim();
+    }
+
+    /**
+     * 解析 CSV 行，处理引号包裹的字段
+     */
+    private String[] splitCsvLine(String line) {
+        return line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
     }
 
     @Override

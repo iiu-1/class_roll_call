@@ -9,6 +9,7 @@ import com.rollcall.entity.Student;
 import com.rollcall.mapper.StudentMapper;
 import com.rollcall.service.StudentService;
 import org.apache.poi.ss.usermodel.*;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -16,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -118,8 +120,22 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
 
         result.setTotal(newStudents.size() + result.getFail());
         if (!newStudents.isEmpty()) {
-            this.saveBatch(newStudents);
-            result.setSuccess(newStudents.size());
+            try {
+                this.saveBatch(newStudents);
+                result.setSuccess(newStudents.size());
+            } catch (DuplicateKeyException e) {
+                // 并发场景下预过滤未能完全消除重复，逐条插入以精确定位
+                int successCount = 0;
+                for (Student s : newStudents) {
+                    try {
+                        this.save(s);
+                        successCount++;
+                    } catch (DuplicateKeyException ignored) {
+                        result.addError("学号 " + s.getStudentNo() + " 已被其他请求导入，已跳过");
+                    }
+                }
+                result.setSuccess(successCount);
+            }
         }
         return result;
     }
@@ -129,7 +145,8 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
      */
     private List<Student> parseCsv(MultipartFile file, ImportResult result) {
         List<Student> students = new ArrayList<>();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream()))) {
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
             String headerLine = reader.readLine();
             if (headerLine == null) {
                 result.addError("CSV 文件为空");
@@ -235,12 +252,12 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         return -1;
     }
 
-    /** 获取单元格值（处理数字类型学号） */
+    /** 获取单元格值（使用 DataFormatter 避免数字学号变成 "2021001001.0"） */
     private String getCellValue(Row row, int col) {
         Cell cell = row.getCell(col);
         if (cell == null) return "";
-        cell.setCellType(CellType.STRING);
-        return cell.getStringCellValue().trim();
+        // DataFormatter 按单元格原有格式输出，纯数字不会追加 .0
+        return new DataFormatter().formatCellValue(cell).trim();
     }
 
     /**

@@ -25,8 +25,7 @@ public class RollCallController {
     @PostMapping
     public Result<RollCallResult> rollCall(@RequestParam(defaultValue = "3") int n) {
         try {
-            RollCallResult result = rollCallService.rollCall(n);
-            return Result.ok(result);
+            return Result.ok(rollCallService.rollCall(n));
         } catch (IllegalStateException e) {
             return Result.error(e.getMessage());
         }
@@ -35,14 +34,24 @@ public class RollCallController {
     /**
      * 标记学生回答正确
      */
-    @PostMapping("/{studentId}/answer")
-    public Result<RollCallResult> markAnswer(
-            @PathVariable Long studentId,
-            @RequestParam(defaultValue = "false") boolean correct) {
-        if (correct) {
+    @PostMapping("/{studentId}/correct")
+    public Result<RollCallResult> markCorrect(@PathVariable Long studentId) {
+        try {
             return Result.ok(rollCallService.markCorrect(studentId));
-        } else {
+        } catch (IllegalArgumentException e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 标记学生回答错误
+     */
+    @PostMapping("/{studentId}/wrong")
+    public Result<RollCallResult> markWrong(@PathVariable Long studentId) {
+        try {
             return Result.ok(rollCallService.markWrong(studentId));
+        } catch (IllegalArgumentException e) {
+            return Result.error(e.getMessage());
         }
     }
 

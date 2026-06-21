@@ -8,6 +8,7 @@ import com.rollcall.service.RollCallService;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.stream.Collectors;
 
 /**
@@ -18,8 +19,8 @@ public class RollCallServiceImpl implements RollCallService {
 
     private final StudentMapper studentMapper;
 
-    /** 当前问题已点名的学生ID列表 */
-    private final List<Long> calledStudentIds = new ArrayList<>();
+    /** 当前问题已点名的学生ID列表（线程安全） */
+    private final ConcurrentLinkedDeque<Long> calledStudentIds = new ConcurrentLinkedDeque<>();
 
     /** 阈值 */
     private int threshold = 3;
@@ -38,12 +39,14 @@ public class RollCallServiceImpl implements RollCallService {
 
     @Override
     public RollCallResult markCorrect(Long studentId) {
-        if (calledStudentIds.contains(studentId)) {
-            Student student = studentMapper.selectById(studentId);
-            if (student != null) {
-                student.setAnswerCount(student.getAnswerCount() + 1);
-                studentMapper.updateById(student);
-            }
+        if (!calledStudentIds.contains(studentId)) {
+            throw new IllegalArgumentException("该学生不在当前轮次点名列表中");
+        }
+        Student student = studentMapper.selectById(studentId);
+        if (student != null) {
+            int answerCount = student.getAnswerCount() != null ? student.getAnswerCount() : 0;
+            student.setAnswerCount(answerCount + 1);
+            studentMapper.updateById(student);
         }
         resetRound();
         return getStatus();
@@ -52,12 +55,7 @@ public class RollCallServiceImpl implements RollCallService {
     @Override
     public RollCallResult markWrong(Long studentId) {
         if (!calledStudentIds.contains(studentId)) {
-            calledStudentIds.add(studentId);
-            Student student = studentMapper.selectById(studentId);
-            if (student != null) {
-                student.setCallCount(student.getCallCount() + 1);
-                studentMapper.updateById(student);
-            }
+            throw new IllegalArgumentException("该学生不在当前轮次点名列表中");
         }
         return getStatus();
     }
@@ -68,11 +66,8 @@ public class RollCallServiceImpl implements RollCallService {
         result.setCurrentRoundCount(calledStudentIds.size());
         result.setThreshold(threshold);
         result.setCalledStudentIds(new ArrayList<>(calledStudentIds));
-
-        // 统计未答对人数（当前轮次所有被点名的都算未答对直到有人答对）
-        long wrongCount = countWrongInRound();
-        result.setCurrentWrongCount((int) wrongCount);
-        result.setHighScoreMode(wrongCount >= threshold);
+        result.setCurrentWrongCount(calledStudentIds.size());
+        result.setHighScoreMode(calledStudentIds.size() >= threshold);
         return result;
     }
 
@@ -96,7 +91,7 @@ public class RollCallServiceImpl implements RollCallService {
             throw new IllegalStateException("没有可点名的学生，请先导入学生信息");
         }
 
-        int wrongInRound = (int) countWrongInRound();
+        int wrongInRound = calledStudentIds.size();
         boolean highScoreMode = wrongInRound >= threshold;
 
         // 排除本轮已点名的学生（避免重复点同一个人）
@@ -105,22 +100,23 @@ public class RollCallServiceImpl implements RollCallService {
                 .filter(s -> !calledIds.contains(s.getId()))
                 .collect(Collectors.toList());
 
+        boolean fullRoundExhausted = false;
         if (available.isEmpty()) {
-            // 所有学生本轮都被点过了，从所有启用学生中重新选择
+            // 所有学生本轮都被点过了，重新开始一轮
+            fullRoundExhausted = true;
             available = new ArrayList<>(allEnabled);
         }
 
         Student picked;
         if (highScoreMode) {
-            // 高分模式：从 answer_count 最高的学生中随机选
             picked = pickFromHighScore(available);
         } else {
-            // 正常模式：选 call_count 最小的
             picked = pickFromLowCallCount(available);
         }
 
-        // 更新学生点名次数
-        picked.setCallCount(picked.getCallCount() + 1);
+        // 更新学生点名次数（空值保护）
+        int currentCallCount = picked.getCallCount() != null ? picked.getCallCount() : 0;
+        picked.setCallCount(currentCallCount + 1);
         studentMapper.updateById(picked);
 
         // 记录本轮点名
@@ -132,6 +128,7 @@ public class RollCallServiceImpl implements RollCallService {
         result.setThreshold(threshold);
         result.setCalledStudentIds(new ArrayList<>(calledStudentIds));
         result.setHighScoreMode(highScoreMode);
+        result.setFullRoundExhausted(fullRoundExhausted);
         return result;
     }
 
@@ -140,11 +137,11 @@ public class RollCallServiceImpl implements RollCallService {
      */
     private Student pickFromLowCallCount(List<Student> available) {
         int minCount = available.stream()
-                .mapToInt(Student::getCallCount)
+                .mapToInt(s -> s.getCallCount() != null ? s.getCallCount() : 0)
                 .min()
                 .orElse(0);
         List<Student> candidates = available.stream()
-                .filter(s -> s.getCallCount() == minCount)
+                .filter(s -> (s.getCallCount() != null ? s.getCallCount() : 0) == minCount)
                 .collect(Collectors.toList());
         Collections.shuffle(candidates);
         return candidates.get(0);
@@ -155,23 +152,13 @@ public class RollCallServiceImpl implements RollCallService {
      */
     private Student pickFromHighScore(List<Student> available) {
         int maxAnswers = available.stream()
-                .mapToInt(Student::getAnswerCount)
+                .mapToInt(s -> s.getAnswerCount() != null ? s.getAnswerCount() : 0)
                 .max()
                 .orElse(0);
         List<Student> candidates = available.stream()
-                .filter(s -> s.getAnswerCount() == maxAnswers)
+                .filter(s -> (s.getAnswerCount() != null ? s.getAnswerCount() : 0) == maxAnswers)
                 .collect(Collectors.toList());
         Collections.shuffle(candidates);
         return candidates.get(0);
-    }
-
-    /**
-     * 统计当前轮次中未答对的人数
-     */
-    private long countWrongInRound() {
-        // 本轮所有被点名的学生中，排除已标记为正确的
-        // 目前简化：所有 calledStudentIds 都是未答对的（答对会 reset）
-        // 实际逻辑：calledStudentIds 中的学生如果被标记答错会保持在列表中
-        return calledStudentIds.size();
     }
 }

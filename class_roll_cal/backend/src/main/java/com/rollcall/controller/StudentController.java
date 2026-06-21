@@ -57,7 +57,7 @@ public class StudentController {
      * 批量新增学生
      */
     @PostMapping("/batch")
-    public Result<List<Student>> addBatch(@Valid @RequestBody List<Student> students) {
+    public Result<List<Student>> addBatch(@RequestBody List<Student> students) {
         return Result.ok(studentService.addBatch(students));
     }
 

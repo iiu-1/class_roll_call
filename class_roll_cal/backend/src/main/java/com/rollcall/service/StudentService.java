@@ -1,7 +1,9 @@
 package com.rollcall.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.rollcall.dto.ImportResult;
 import com.rollcall.entity.Student;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -30,4 +32,7 @@ public interface StudentService {
 
     /** 切换启用/禁用状态 */
     Student toggleEnabled(Long id);
+
+    /** 从文件导入学生信息 */
+    ImportResult importFromFile(MultipartFile file);
 }

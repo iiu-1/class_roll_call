@@ -1,0 +1,12 @@
+package com.rollcall.mapper;
+
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.rollcall.entity.Student;
+import org.apache.ibatis.annotations.Mapper;
+
+/**
+ * 学生 Mapper
+ */
+@Mapper
+public interface StudentMapper extends BaseMapper<Student> {
+}

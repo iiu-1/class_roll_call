@@ -30,7 +30,7 @@
       <el-col :span="6">
         <el-card>
           <div class="stat-card">
-            <div class="stat-value">{{ (stats.overallRate * 100).toFixed(1) }}%</div>
+            <div class="stat-value">{{ ((stats.overallRate ?? 0) * 100).toFixed(1) }}%</div>
             <div class="stat-label">整体正确率</div>
           </div>
         </el-card>

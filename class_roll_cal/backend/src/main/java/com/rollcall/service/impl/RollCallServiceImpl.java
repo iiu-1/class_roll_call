@@ -13,24 +13,30 @@ import java.util.stream.Collectors;
 
 /**
  * 点名 Service 实现
+ * <p>
+ * 注意：当前设计为单用户单教室场景，实例状态存储在内存中。
+ * 如需多用户支持，应将轮次状态迁移到 Redis 或数据库。
  */
 @Service
 public class RollCallServiceImpl implements RollCallService {
 
     private final StudentMapper studentMapper;
 
-    /** 当前问题已点名的学生ID列表（线程安全） */
+    /** 本轮已点名的学生ID（用于避免同一轮重复点名） */
     private final ConcurrentLinkedDeque<Long> calledStudentIds = new ConcurrentLinkedDeque<>();
 
-    /** 阈值 */
-    private int threshold = 3;
+    /** 本轮实际答错人数 */
+    private volatile int wrongCount = 0;
+
+    /** 阈值（volatile 保证多线程可见性） */
+    private volatile int threshold = 3;
 
     public RollCallServiceImpl(StudentMapper studentMapper) {
         this.studentMapper = studentMapper;
     }
 
     @Override
-    public RollCallResult rollCall(int n) {
+    public synchronized RollCallResult rollCall(int n) {
         if (n > 0) {
             this.threshold = n;
         }
@@ -38,7 +44,7 @@ public class RollCallServiceImpl implements RollCallService {
     }
 
     @Override
-    public RollCallResult markCorrect(Long studentId) {
+    public synchronized RollCallResult markCorrect(Long studentId) {
         if (!calledStudentIds.contains(studentId)) {
             throw new IllegalArgumentException("该学生不在当前轮次点名列表中");
         }
@@ -53,10 +59,11 @@ public class RollCallServiceImpl implements RollCallService {
     }
 
     @Override
-    public RollCallResult markWrong(Long studentId) {
+    public synchronized RollCallResult markWrong(Long studentId) {
         if (!calledStudentIds.contains(studentId)) {
             throw new IllegalArgumentException("该学生不在当前轮次点名列表中");
         }
+        wrongCount++;
         return getStatus();
     }
 
@@ -66,14 +73,15 @@ public class RollCallServiceImpl implements RollCallService {
         result.setCurrentRoundCount(calledStudentIds.size());
         result.setThreshold(threshold);
         result.setCalledStudentIds(new ArrayList<>(calledStudentIds));
-        result.setCurrentWrongCount(calledStudentIds.size());
-        result.setHighScoreMode(calledStudentIds.size() >= threshold);
+        result.setCurrentWrongCount(wrongCount);
+        result.setHighScoreMode(wrongCount >= threshold);
         return result;
     }
 
     @Override
     public void resetRound() {
         calledStudentIds.clear();
+        wrongCount = 0;
     }
 
     /**
@@ -91,8 +99,7 @@ public class RollCallServiceImpl implements RollCallService {
             throw new IllegalStateException("没有可点名的学生，请先导入学生信息");
         }
 
-        int wrongInRound = calledStudentIds.size();
-        boolean highScoreMode = wrongInRound >= threshold;
+        boolean highScoreMode = wrongCount >= threshold;
 
         // 排除本轮已点名的学生（避免重复点同一个人）
         Set<Long> calledIds = new HashSet<>(calledStudentIds);
@@ -124,7 +131,7 @@ public class RollCallServiceImpl implements RollCallService {
 
         result.setStudent(picked);
         result.setCurrentRoundCount(calledStudentIds.size());
-        result.setCurrentWrongCount(wrongInRound);
+        result.setCurrentWrongCount(wrongCount);
         result.setThreshold(threshold);
         result.setCalledStudentIds(new ArrayList<>(calledStudentIds));
         result.setHighScoreMode(highScoreMode);

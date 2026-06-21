@@ -14,12 +14,22 @@ public class MyMetaObjectHandler implements MetaObjectHandler {
 
     @Override
     public void insertFill(MetaObject metaObject) {
-        this.strictInsertFill(metaObject, "createTime", LocalDateTime.class, LocalDateTime.now());
-        this.strictInsertFill(metaObject, "updateTime", LocalDateTime.class, LocalDateTime.now());
+        // 仅在字段无值时填充，避免覆盖已设置的值
+        Object createTime = this.getFieldValByName("createTime", metaObject);
+        if (createTime == null) {
+            this.strictInsertFill(metaObject, "createTime", LocalDateTime.class, LocalDateTime.now());
+        }
+        Object updateTime = this.getFieldValByName("updateTime", metaObject);
+        if (updateTime == null) {
+            this.strictInsertFill(metaObject, "updateTime", LocalDateTime.class, LocalDateTime.now());
+        }
     }
 
     @Override
     public void updateFill(MetaObject metaObject) {
-        this.strictUpdateFill(metaObject, "updateTime", LocalDateTime.class, LocalDateTime.now());
+        Object updateTime = this.getFieldValByName("updateTime", metaObject);
+        if (updateTime == null) {
+            this.strictUpdateFill(metaObject, "updateTime", LocalDateTime.class, LocalDateTime.now());
+        }
     }
 }

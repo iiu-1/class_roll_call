@@ -19,7 +19,7 @@
 
     <properties>
         <java.version>17</java.version>
-        <mybatis-plus.version>3.5.5</mybatis-plus.version>
+        <mybatis-plus.version>3.5.10.1</mybatis-plus.version>
         <poi.version>5.2.5</poi.version>
     </properties>
 
@@ -41,6 +41,27 @@
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-boot-starter</artifactId>
             <version>${mybatis-plus.version}</version>
+            <exclusions>
+                <!-- 排除旧版 mybatis-spring，手动引入 3.0.4+ 以兼容 Spring 6.2 -->
+                <exclusion>
+                    <groupId>org.mybatis</groupId>
+                    <artifactId>mybatis-spring</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- mybatis-spring 3.0.4+ 修复 factoryBeanObjectType 类型问题 -->
+        <dependency>
+            <groupId>org.mybatis</groupId>
+            <artifactId>mybatis-spring</artifactId>
+            <version>3.0.4</version>
+        </dependency>
+
+        <!-- MyBatis-Plus JSqlParser (分页插件从 3.5.9 起拆分到此模块) -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-jsqlparser</artifactId>
+            <version>${mybatis-plus.version}</version>
         </dependency>
 
         <!-- MySQL Driver -->
@@ -50,7 +71,7 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- Lombok -->
+        <!-- Lombok (版本由 spring-boot-starter-parent 管理，兼容 JDK 17) -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>

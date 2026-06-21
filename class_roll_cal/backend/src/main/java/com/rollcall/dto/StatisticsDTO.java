@@ -1,11 +1,14 @@
 package com.rollcall.dto;
 
 import com.rollcall.entity.Student;
+import lombok.Data;
+
 import java.util.List;
 
 /**
  * 统计 DTO
  */
+@Data
 public class StatisticsDTO {
 
     /** 学生总数 */
@@ -26,6 +29,7 @@ public class StatisticsDTO {
     /** 学生明细列表 */
     private List<StudentStat> details;
 
+    @Data
     public static class StudentStat {
         private Long id;
         private String studentNo;
@@ -44,31 +48,5 @@ public class StatisticsDTO {
             stat.rate = stat.callCount > 0 ? (double) stat.answerCount / stat.callCount : 0;
             return stat;
         }
-
-        public Long getId() { return id; }
-        public void setId(Long id) { this.id = id; }
-        public String getStudentNo() { return studentNo; }
-        public void setStudentNo(String studentNo) { this.studentNo = studentNo; }
-        public String getName() { return name; }
-        public void setName(String name) { this.name = name; }
-        public int getCallCount() { return callCount; }
-        public void setCallCount(int callCount) { this.callCount = callCount; }
-        public int getAnswerCount() { return answerCount; }
-        public void setAnswerCount(int answerCount) { this.answerCount = answerCount; }
-        public double getRate() { return rate; }
-        public void setRate(double rate) { this.rate = rate; }
     }
-
-    public long getTotalStudents() { return totalStudents; }
-    public void setTotalStudents(long totalStudents) { this.totalStudents = totalStudents; }
-    public long getEnabledStudents() { return enabledStudents; }
-    public void setEnabledStudents(long enabledStudents) { this.enabledStudents = enabledStudents; }
-    public long getTotalCallCount() { return totalCallCount; }
-    public void setTotalCallCount(long totalCallCount) { this.totalCallCount = totalCallCount; }
-    public long getTotalAnswerCount() { return totalAnswerCount; }
-    public void setTotalAnswerCount(long totalAnswerCount) { this.totalAnswerCount = totalAnswerCount; }
-    public double getOverallRate() { return overallRate; }
-    public void setOverallRate(double overallRate) { this.overallRate = overallRate; }
-    public List<StudentStat> getDetails() { return details; }
-    public void setDetails(List<StudentStat> details) { this.details = details; }
 }

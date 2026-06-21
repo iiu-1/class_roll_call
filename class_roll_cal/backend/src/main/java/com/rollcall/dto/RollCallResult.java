@@ -1,12 +1,15 @@
 package com.rollcall.dto;
 
 import com.rollcall.entity.Student;
+import lombok.Data;
+
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * 点名结果 DTO
  */
+@Data
 public class RollCallResult {
 
     /** 本轮被点名学生 */
@@ -29,27 +32,4 @@ public class RollCallResult {
 
     /** 本轮已点名全部学生，自动重选 */
     private boolean fullRoundExhausted;
-
-    // ====== getters & setters ======
-
-    public Student getStudent() { return student; }
-    public void setStudent(Student student) { this.student = student; }
-
-    public int getCurrentRoundCount() { return currentRoundCount; }
-    public void setCurrentRoundCount(int currentRoundCount) { this.currentRoundCount = currentRoundCount; }
-
-    public int getCurrentWrongCount() { return currentWrongCount; }
-    public void setCurrentWrongCount(int currentWrongCount) { this.currentWrongCount = currentWrongCount; }
-
-    public int getThreshold() { return threshold; }
-    public void setThreshold(int threshold) { this.threshold = threshold; }
-
-    public List<Long> getCalledStudentIds() { return calledStudentIds; }
-    public void setCalledStudentIds(List<Long> calledStudentIds) { this.calledStudentIds = calledStudentIds; }
-
-    public boolean isHighScoreMode() { return highScoreMode; }
-    public void setHighScoreMode(boolean highScoreMode) { this.highScoreMode = highScoreMode; }
-
-    public boolean isFullRoundExhausted() { return fullRoundExhausted; }
-    public void setFullRoundExhausted(boolean fullRoundExhausted) { this.fullRoundExhausted = fullRoundExhausted; }
 }

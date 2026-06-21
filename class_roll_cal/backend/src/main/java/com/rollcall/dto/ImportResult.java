@@ -1,11 +1,14 @@
 package com.rollcall.dto;
 
+import lombok.Data;
+
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * 导入结果 DTO
  */
+@Data
 public class ImportResult {
 
     /** 总行数 */
@@ -24,18 +27,4 @@ public class ImportResult {
         this.errors.add(error);
         this.fail++;
     }
-
-    // ====== getters & setters ======
-
-    public int getTotal() { return total; }
-    public void setTotal(int total) { this.total = total; }
-
-    public int getSuccess() { return success; }
-    public void setSuccess(int success) { this.success = success; }
-
-    public int getFail() { return fail; }
-    public void setFail(int fail) { this.fail = fail; }
-
-    public List<String> getErrors() { return errors; }
-    public void setErrors(List<String> errors) { this.errors = errors; }
 }

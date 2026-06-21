@@ -102,6 +102,8 @@ async function fetchData() {
     const { data } = await getStudents({ page: page.value, size: size.value, keyword: keyword.value })
     tableData.value = data.data.records
     total.value = data.data.total
+  } catch (e) {
+    ElMessage.error('加载学生列表失败')
   } finally {
     loading.value = false
   }
@@ -125,27 +127,39 @@ async function submit() {
     ElMessage.warning('学号和姓名不能为空')
     return
   }
-  if (isEdit.value) {
-    await updateStudent(editId, form.value)
-    ElMessage.success('更新成功')
-  } else {
-    await addStudent(form.value)
-    ElMessage.success('新增成功')
+  try {
+    if (isEdit.value) {
+      await updateStudent(editId, form.value)
+      ElMessage.success('更新成功')
+    } else {
+      await addStudent(form.value)
+      ElMessage.success('新增成功')
+    }
+    dialogVisible.value = false
+    fetchData()
+  } catch (e) {
+    ElMessage.error(e.response?.data?.message || '操作失败')
   }
-  dialogVisible.value = false
-  fetchData()
 }
 
 async function del(id) {
-  await deleteStudent(id)
-  ElMessage.success('已删除')
-  fetchData()
+  try {
+    await deleteStudent(id)
+    ElMessage.success('已删除')
+    fetchData()
+  } catch (e) {
+    ElMessage.error(e.response?.data?.message || '删除失败')
+  }
 }
 
 async function toggle(id) {
-  await toggleStudent(id)
-  ElMessage.success('状态已切换')
-  fetchData()
+  try {
+    await toggleStudent(id)
+    ElMessage.success('状态已切换')
+    fetchData()
+  } catch (e) {
+    ElMessage.error(e.response?.data?.message || '操作失败')
+  }
 }
 
 function onImportSuccess(res) {

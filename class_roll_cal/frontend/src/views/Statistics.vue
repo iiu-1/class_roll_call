@@ -37,7 +37,7 @@
       </el-col>
     </el-row>
 
-    <el-card>
+    <el-card v-loading="loading">
       <h4 style="margin-top: 0">学生明细（按正确率排序）</h4>
       <el-table :data="stats.details" border stripe>
         <el-table-column prop="studentNo" label="学号" width="140" />
@@ -56,6 +56,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import { getStatistics } from '../api/student'
 
 const stats = ref({
@@ -66,12 +67,18 @@ const stats = ref({
   overallRate: 0,
   details: []
 })
+const loading = ref(false)
 
 onMounted(async () => {
+  loading.value = true
   try {
     const { data } = await getStatistics()
     stats.value = data.data
-  } catch (e) { /* ignore */ }
+  } catch (e) {
+    ElMessage.error('统计数据加载失败')
+  } finally {
+    loading.value = false
+  }
 })
 
 function rateColor(rate) {

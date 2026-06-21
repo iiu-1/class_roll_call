@@ -2,9 +2,11 @@ package com.rollcall.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.rollcall.common.Result;
+import com.rollcall.dto.ImportResult;
 import com.rollcall.entity.Student;
 import com.rollcall.service.StudentService;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.validation.Valid;
 import java.util.List;
@@ -85,5 +87,17 @@ public class StudentController {
     @PutMapping("/{id}/toggle")
     public Result<Student> toggleEnabled(@PathVariable Long id) {
         return Result.ok(studentService.toggleEnabled(id));
+    }
+
+    /**
+     * 从 Excel/CSV 文件导入学生
+     */
+    @PostMapping("/import")
+    public Result<ImportResult> importStudents(@RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) {
+            return Result.error("文件不能为空");
+        }
+        ImportResult result = studentService.importFromFile(file);
+        return Result.ok("导入完成", result);
     }
 }

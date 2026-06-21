@@ -4,13 +4,20 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.rollcall.dto.ImportResult;
 import com.rollcall.entity.Student;
 import com.rollcall.mapper.StudentMapper;
 import com.rollcall.service.StudentService;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -69,6 +76,153 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         });
         this.saveBatch(students);
         return students;
+    }
+
+    @Override
+    @Transactional
+    public ImportResult importFromFile(MultipartFile file) {
+        ImportResult result = new ImportResult();
+        String filename = file.getOriginalFilename();
+        if (filename == null) {
+            result.addError("文件名为空");
+            return result;
+        }
+
+        List<Student> students;
+        if (filename.endsWith(".csv")) {
+            students = parseCsv(file, result);
+        } else if (filename.endsWith(".xlsx") || filename.endsWith(".xls")) {
+            students = parseExcel(file, result);
+        } else {
+            result.addError("不支持的文件格式，请上传 .xlsx、.xls 或 .csv 文件");
+            return result;
+        }
+
+        result.setTotal(students.size() + result.getFail());
+        if (!students.isEmpty()) {
+            this.saveBatch(students);
+            result.setSuccess(students.size());
+        }
+        return result;
+    }
+
+    /**
+     * 解析 CSV 文件
+     */
+    private List<Student> parseCsv(MultipartFile file, ImportResult result) {
+        List<Student> students = new ArrayList<>();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream()))) {
+            String headerLine = reader.readLine();
+            if (headerLine == null) {
+                result.addError("CSV 文件为空");
+                return students;
+            }
+            String[] headers = headerLine.split(",");
+            int colSno = findColumn(headers, "学号");
+            int colName = findColumn(headers, "姓名");
+            if (colSno < 0 || colName < 0) {
+                result.addError("CSV 表头需包含「学号」和「姓名」列");
+                return students;
+            }
+
+            String line;
+            int rowNum = 1;
+            while ((line = reader.readLine()) != null) {
+                rowNum++;
+                String[] cells = line.split(",");
+                try {
+                    String sno = cells[colSno].trim();
+                    String name = cells[colName].trim();
+                    if (!StringUtils.hasText(sno) || !StringUtils.hasText(name)) {
+                        result.addError("第" + rowNum + "行：学号或姓名为空");
+                        continue;
+                    }
+                    Student s = new Student();
+                    s.setStudentNo(sno);
+                    s.setName(name);
+                    s.setCallCount(0);
+                    s.setAnswerCount(0);
+                    s.setEnabled(1);
+                    students.add(s);
+                } catch (Exception e) {
+                    result.addError("第" + rowNum + "行：解析失败 - " + e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            result.addError("CSV 文件读取失败：" + e.getMessage());
+        }
+        return students;
+    }
+
+    /**
+     * 解析 Excel 文件
+     */
+    private List<Student> parseExcel(MultipartFile file, ImportResult result) {
+        List<Student> students = new ArrayList<>();
+        try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
+            Sheet sheet = workbook.getSheetAt(0);
+            if (sheet.getLastRowNum() < 1) {
+                result.addError("Excel 文件无数据");
+                return students;
+            }
+
+            // 读取表头
+            Row headerRow = sheet.getRow(0);
+            String[] headers = new String[headerRow.getLastCellNum()];
+            for (int i = 0; i < headerRow.getLastCellNum(); i++) {
+                Cell cell = headerRow.getCell(i);
+                headers[i] = cell == null ? "" : cell.toString().trim();
+            }
+            int colSno = findColumn(headers, "学号");
+            int colName = findColumn(headers, "姓名");
+            if (colSno < 0 || colName < 0) {
+                result.addError("Excel 表头需包含「学号」和「姓名」列");
+                return students;
+            }
+
+            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+                Row row = sheet.getRow(i);
+                if (row == null) continue;
+                try {
+                    String sno = getCellValue(row, colSno);
+                    String name = getCellValue(row, colName);
+                    if (!StringUtils.hasText(sno) || !StringUtils.hasText(name)) {
+                        result.addError("第" + (i + 1) + "行：学号或姓名为空");
+                        continue;
+                    }
+                    Student s = new Student();
+                    s.setStudentNo(sno);
+                    s.setName(name);
+                    s.setCallCount(0);
+                    s.setAnswerCount(0);
+                    s.setEnabled(1);
+                    students.add(s);
+                } catch (Exception e) {
+                    result.addError("第" + (i + 1) + "行：解析失败 - " + e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            result.addError("Excel 文件读取失败：" + e.getMessage());
+        }
+        return students;
+    }
+
+    /** 在表头中查找列索引 */
+    private int findColumn(String[] headers, String name) {
+        for (int i = 0; i < headers.length; i++) {
+            if (headers[i] != null && headers[i].contains(name)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /** 获取单元格值（处理数字类型学号） */
+    private String getCellValue(Row row, int col) {
+        Cell cell = row.getCell(col);
+        if (cell == null) return "";
+        cell.setCellType(CellType.STRING);
+        return cell.getStringCellValue().trim();
     }
 
     @Override

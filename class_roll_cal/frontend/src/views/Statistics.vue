@@ -2,40 +2,38 @@
   <div>
     <h3>统计报表</h3>
 
-    <el-row :gutter="20" style="margin-bottom: 20px">
-      <el-col :span="6">
-        <el-card>
-          <div class="stat-card">
-            <div class="stat-value">{{ stats.totalStudents }}</div>
-            <div class="stat-label">学生总数</div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="6">
-        <el-card>
-          <div class="stat-card">
-            <div class="stat-value">{{ stats.enabledStudents }}</div>
-            <div class="stat-label">启用学生</div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="6">
-        <el-card>
-          <div class="stat-card">
-            <div class="stat-value">{{ stats.totalCallCount }}</div>
-            <div class="stat-label">总点名次数</div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="6">
-        <el-card>
-          <div class="stat-card">
-            <div class="stat-value">{{ ((stats.overallRate ?? 0) * 100).toFixed(1) }}%</div>
-            <div class="stat-label">整体正确率</div>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
+    <div class="stat-row">
+      <el-card class="stat-card-item">
+        <div class="stat-card">
+          <div class="stat-value">{{ stats.totalStudents }}</div>
+          <div class="stat-label">学生总数</div>
+        </div>
+      </el-card>
+      <el-card class="stat-card-item">
+        <div class="stat-card">
+          <div class="stat-value">{{ stats.enabledStudents }}</div>
+          <div class="stat-label">启用学生</div>
+        </div>
+      </el-card>
+      <el-card class="stat-card-item">
+        <div class="stat-card">
+          <div class="stat-value">{{ stats.totalCallCount }}</div>
+          <div class="stat-label">总点名次数</div>
+        </div>
+      </el-card>
+      <el-card class="stat-card-item">
+        <div class="stat-card">
+          <div class="stat-value">{{ stats.totalAnswerCount }}</div>
+          <div class="stat-label">总答对次数</div>
+        </div>
+      </el-card>
+      <el-card class="stat-card-item">
+        <div class="stat-card">
+          <div class="stat-value">{{ ((stats.overallRate ?? 0) * 100).toFixed(1) }}%</div>
+          <div class="stat-label">整体正确率</div>
+        </div>
+      </el-card>
+    </div>
 
     <el-card v-loading="loading">
       <h4 style="margin-top: 0">学生明细（按正确率排序）</h4>
@@ -89,7 +87,16 @@ function rateColor(rate) {
 </script>
 
 <style scoped>
+.stat-row {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+.stat-card-item {
+  flex: 1;
+  min-width: 0;
+}
 .stat-card { text-align: center; padding: 10px; }
-.stat-value { font-size: 36px; font-weight: bold; color: #409eff; }
+.stat-value { font-size: 32px; font-weight: bold; color: #409eff; }
 .stat-label { font-size: 14px; color: #909399; margin-top: 4px; }
 </style>

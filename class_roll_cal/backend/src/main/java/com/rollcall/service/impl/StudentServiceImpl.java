@@ -288,6 +288,14 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
     }
 
     @Override
+    @Transactional
+    public void deleteBatch(List<Long> ids) {
+        if (ids != null && !ids.isEmpty()) {
+            this.removeByIds(ids);
+        }
+    }
+
+    @Override
     public Student toggleEnabled(Long id) {
         Student student = this.getById(id);
         if (student != null) {

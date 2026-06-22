@@ -10,6 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 学生管理 Controller
@@ -78,6 +79,19 @@ public class StudentController {
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         studentService.delete(id);
+        return Result.ok();
+    }
+
+    /**
+     * 批量删除学生
+     */
+    @DeleteMapping("/batch")
+    public Result<Void> deleteBatch(@RequestBody Map<String, List<Long>> body) {
+        List<Long> ids = body.get("ids");
+        if (ids == null || ids.isEmpty()) {
+            return Result.error("请选择要删除的学生");
+        }
+        studentService.deleteBatch(ids);
         return Result.ok();
     }
 

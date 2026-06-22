@@ -32,19 +32,19 @@
 
     <el-table ref="tableRef" :data="tableData" row-key="id" border stripe v-loading="loading" @selection-change="onSelectionChange">
       <el-table-column type="selection" width="50" reserve-selection />
-      <el-table-column prop="studentNo" label="学号" />
-      <el-table-column prop="name" label="姓名" />
-      <el-table-column prop="callCount" label="被点名次数" />
-      <el-table-column prop="answerCount" label="回答正确次数" />
-      <el-table-column label="状态">
+      <el-table-column prop="studentNo" label="学号" min-width="130" />
+      <el-table-column prop="name" label="姓名" min-width="90" />
+      <el-table-column prop="callCount" label="被点名次数" min-width="110" />
+      <el-table-column prop="answerCount" label="回答正确次数" min-width="120" />
+      <el-table-column label="状态" min-width="80">
         <template #default="{ row }">
           <el-tag :type="row.enabled === 1 ? 'success' : 'danger'">
             {{ row.enabled === 1 ? '启用' : '禁用' }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="createTime" label="创建时间" />
-      <el-table-column label="操作">
+      <el-table-column prop="createTime" label="创建时间" min-width="160" />
+      <el-table-column label="操作" min-width="160">
         <template #default="{ row }">
           <el-button size="small" @click="showEditDialog(row)">编辑</el-button>
           <el-button size="small" :type="row.enabled === 1 ? 'warning' : 'success'" @click="toggle(row.id)">

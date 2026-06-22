@@ -1,0 +1,4 @@
+# 开发环境配置
+spring:
+  datasource:
+    password: ${DB_PASSWORD:123456}

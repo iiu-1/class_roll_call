@@ -85,6 +85,7 @@ async function wrong() {
   try {
     const { data } = await markWrong(status.value.student.id)
     status.value = data.data
+    ElMessage.warning('回答错误！')
   } catch (e) {
     ElMessage.error(e.response?.data?.message || '操作失败')
   }

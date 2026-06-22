@@ -273,8 +273,11 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         LambdaUpdateWrapper<Student> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(Student::getId, student.getId())
                .set(Student::getStudentNo, student.getStudentNo())
-               .set(Student::getName, student.getName())
-               .set(Student::getEnabled, student.getEnabled());
+               .set(Student::getName, student.getName());
+        // enabled 可能未传，仅在有值时更新
+        if (student.getEnabled() != null) {
+            wrapper.set(Student::getEnabled, student.getEnabled());
+        }
         this.update(wrapper);
         return this.getById(student.getId());
     }
@@ -288,7 +291,9 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
     public Student toggleEnabled(Long id) {
         Student student = this.getById(id);
         if (student != null) {
-            student.setEnabled(student.getEnabled() == 1 ? 0 : 1);
+            // enabled 为 null 时视为禁用，切换为启用
+            int current = student.getEnabled() != null ? student.getEnabled() : 0;
+            student.setEnabled(current == 1 ? 0 : 1);
             this.updateById(student);
         }
         return student;

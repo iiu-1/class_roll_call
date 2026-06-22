@@ -32,7 +32,7 @@ public class StatisticsController {
 
         StatisticsDTO dto = new StatisticsDTO();
         dto.setTotalStudents(allStudents.size());
-        dto.setEnabledStudents(allStudents.stream().filter(s -> s.getEnabled() == 1).count());
+        dto.setEnabledStudents(allStudents.stream().filter(s -> s.getEnabled() != null && s.getEnabled() == 1).count());
 
         long totalCalls = allStudents.stream().mapToLong(s -> s.getCallCount() != null ? s.getCallCount() : 0).sum();
         long totalAnswers = allStudents.stream().mapToLong(s -> s.getAnswerCount() != null ? s.getAnswerCount() : 0).sum();

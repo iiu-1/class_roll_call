@@ -38,11 +38,11 @@
     <el-card v-loading="loading">
       <h4 style="margin-top: 0">学生明细（按正确率排序）</h4>
       <el-table :data="stats.details" border stripe>
-        <el-table-column prop="studentNo" label="学号" width="140" />
-        <el-table-column prop="name" label="姓名" width="120" />
-        <el-table-column prop="callCount" label="被点名次数" width="120" />
-        <el-table-column prop="answerCount" label="回答正确次数" width="130" />
-        <el-table-column label="正确率" width="120">
+        <el-table-column prop="studentNo" label="学号" />
+        <el-table-column prop="name" label="姓名" />
+        <el-table-column prop="callCount" label="被点名次数" />
+        <el-table-column prop="answerCount" label="回答正确次数" />
+        <el-table-column label="正确率">
           <template #default="{ row }">
             <el-progress :percentage="Math.round(row.rate * 100)" :color="rateColor(row.rate)" />
           </template>

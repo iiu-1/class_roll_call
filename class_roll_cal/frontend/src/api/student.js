@@ -12,6 +12,7 @@ export const addStudent = (data) => api.post('/students', data)
 export const addBatchStudents = (data) => api.post('/students/batch', data)
 export const updateStudent = (id, data) => api.put(`/students/${id}`, data)
 export const deleteStudent = (id) => api.delete(`/students/${id}`)
+export const deleteBatchStudents = (ids) => api.delete('/students/batch', { data: { ids } })
 export const toggleStudent = (id) => api.put(`/students/${id}/toggle`)
 export const importStudents = (formData) => api.post('/students/import', formData, {
   headers: { 'Content-Type': 'multipart/form-data' }

@@ -30,6 +30,9 @@ public interface StudentService {
     /** 删除学生 */
     void delete(Long id);
 
+    /** 批量删除学生 */
+    void deleteBatch(List<Long> ids);
+
     /** 切换启用/禁用状态 */
     Student toggleEnabled(Long id);
 

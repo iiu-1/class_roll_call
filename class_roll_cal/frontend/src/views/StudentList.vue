@@ -14,6 +14,13 @@
         >
           <el-button type="success">导入Excel/CSV</el-button>
         </el-upload>
+        <el-popconfirm title="确定批量删除选中的学生？" @confirm="batchDelete">
+          <template #reference>
+            <el-button type="danger" style="margin-left: 10px" :disabled="selectedIds.size === 0">
+              删除选中 ({{ selectedIds.size }})
+            </el-button>
+          </template>
+        </el-popconfirm>
       </div>
     </div>
 
@@ -23,20 +30,21 @@
       </template>
     </el-input>
 
-    <el-table :data="tableData" border stripe v-loading="loading">
-      <el-table-column prop="studentNo" label="学号" width="140" />
-      <el-table-column prop="name" label="姓名" width="120" />
-      <el-table-column prop="callCount" label="被点名次数" width="120" />
-      <el-table-column prop="answerCount" label="回答正确次数" width="130" />
-      <el-table-column label="状态" width="100">
+    <el-table ref="tableRef" :data="tableData" row-key="id" border stripe v-loading="loading" @selection-change="onSelectionChange">
+      <el-table-column type="selection" width="50" reserve-selection />
+      <el-table-column prop="studentNo" label="学号" />
+      <el-table-column prop="name" label="姓名" />
+      <el-table-column prop="callCount" label="被点名次数" />
+      <el-table-column prop="answerCount" label="回答正确次数" />
+      <el-table-column label="状态">
         <template #default="{ row }">
           <el-tag :type="row.enabled === 1 ? 'success' : 'danger'">
             {{ row.enabled === 1 ? '启用' : '禁用' }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="createTime" label="创建时间" width="180" />
-      <el-table-column label="操作" min-width="200">
+      <el-table-column prop="createTime" label="创建时间" />
+      <el-table-column label="操作">
         <template #default="{ row }">
           <el-button size="small" @click="showEditDialog(row)">编辑</el-button>
           <el-button size="small" :type="row.enabled === 1 ? 'warning' : 'success'" @click="toggle(row.id)">
@@ -79,10 +87,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getStudents, addStudent, updateStudent, deleteStudent, toggleStudent } from '../api/student'
+import { getStudents, addStudent, updateStudent, deleteStudent, deleteBatchStudents, toggleStudent } from '../api/student'
 
+const tableRef = ref(null)
 const tableData = ref([])
 const loading = ref(false)
 const keyword = ref('')
@@ -93,6 +102,18 @@ const dialogVisible = ref(false)
 const isEdit = ref(false)
 const form = ref({ studentNo: '', name: '' })
 let editId = null
+const selectedIds = ref(new Set())
+
+function onSelectionChange(rows) {
+  // 同步当前页的勾选状态到 selectedIds
+  const currentPageIds = new Set(tableData.value.map(r => r.id))
+  // 先从 selectedIds 中移除当前页的所有 id
+  currentPageIds.forEach(id => selectedIds.value.delete(id))
+  // 再将当前页勾选的 id 加回去
+  rows.forEach(r => selectedIds.value.add(r.id))
+  // 更新按钮显示数量（触发响应式）
+  selectedIds.value = new Set(selectedIds.value)
+}
 
 onMounted(() => fetchData())
 
@@ -102,6 +123,15 @@ async function fetchData() {
     const { data } = await getStudents({ page: page.value, size: size.value, keyword: keyword.value })
     tableData.value = data.data.records
     total.value = data.data.total
+    // 翻页后恢复之前勾选的行
+    await nextTick()
+    if (tableRef.value) {
+      tableData.value.forEach(row => {
+        if (selectedIds.value.has(row.id)) {
+          tableRef.value.toggleRowSelection(row, true)
+        }
+      })
+    }
   } catch (e) {
     ElMessage.error('加载学生列表失败')
   } finally {
@@ -149,6 +179,20 @@ async function del(id) {
     fetchData()
   } catch (e) {
     ElMessage.error(e.response?.data?.message || '删除失败')
+  }
+}
+
+async function batchDelete() {
+  const ids = [...selectedIds.value]
+  if (ids.length === 0) return
+  try {
+    await deleteBatchStudents(ids)
+    ElMessage.success(`已批量删除 ${ids.length} 名学生`)
+    selectedIds.value = new Set()
+    tableRef.value?.clearSelection()
+    fetchData()
+  } catch (e) {
+    ElMessage.error(e.response?.data?.message || '批量删除失败')
   }
 }
 
